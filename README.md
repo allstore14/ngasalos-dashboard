@@ -171,11 +171,19 @@ systemctl status docker
 ## 🔄 Uninstall
 
 ```bash
-systemctl stop ngasalos-api
-systemctl disable ngasalos-api
+systemctl stop ngasalos-api 2>/dev/null
+systemctl disable ngasalos-api 2>/dev/null
 rm -rf /opt/ngasalos
+rm -rf /etc/ngasalos
+rm -rf /var/lib/ngasalos
+rm -rf /var/log/ngasalos
 rm -f /etc/systemd/system/ngasalos-api.service
 systemctl daemon-reload
+
+ls /opt/ngasalos 2>/dev/null || echo "✅ /opt/ngasalos bersih"
+ls /etc/ngasalos 2>/dev/null || echo "✅ /etc/ngasalos bersih"
+ls /var/lib/ngasalos 2>/dev/null || echo "✅ /var/lib/ngasalos bersih"
+ls /etc/systemd/system/ngasalos* 2>/dev/null || echo "✅ Service bersih"
 ```
 
 ---
