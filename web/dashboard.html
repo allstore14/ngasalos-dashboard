@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>NgasalOS Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0c10; color: #e8ecf4; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #00e5a0; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: #0f1117; border: 1px solid #1a1f2e; border-radius: 12px; padding: 20px; }
+        .card:hover { border-color: #00e5a0; }
+        .card-title { font-size: 12px; text-transform: uppercase; color: #8892a4; margin-bottom: 10px; }
+        .card-value { font-size: 32px; font-weight: bold; color: #00e5a0; }
+        .progress-bar { margin-top: 12px; height: 4px; background: #1a1f2e; border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #00e5a0; border-radius: 2px; }
+        .tab-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; background: #0f1117; border: 1px solid #1a1f2e; border-radius: 8px; cursor: pointer; }
+        .tab.active { background: #00e5a0; color: #000; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        button { background: #00e5a0; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin: 2px; }
+        button.danger { background: #ff4757; color: white; }
+        button.warning { background: #ffd166; color: #000; }
+        .service-item, .disk-item, .rule-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1a1f2e; flex-wrap: wrap; gap: 10px; }
+        .status-running { color: #00e5a0; }
+        .status-stopped { color: #ff4757; }
+        canvas { max-height: 200px; width: 100% !important; }
+        .log-viewer { background: #0a0c10; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 11px; max-height: 300px; overflow: auto; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #0f1117; border: 1px solid #00e5a0; border-radius: 12px; padding: 20px; width: 700px; max-width: 90%; max-height: 80%; overflow: auto; }
+        .ip-box { background: #0f1117; border-radius: 12px; padding: 15px; text-align: center; margin-top: 20px; }
+        .footer { text-align: center; margin-top: 30px; color: #4a5568; font-size: 12px; }
+        input { background: #1a1f2e; border: 1px solid #2a2f3e; color: #fff; padding: 6px 10px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🚀 NgasalOS Dashboard <button onclick="rebootSystem()" class="warning">Reboot</button> <button onclick="shutdownSystem()" class="danger">Shutdown</button></h1>
+    <div class="tab-bar">
+        <div class="tab active" onclick="showPanel('metrics')">📊 Metrics</div>
+        <div class="tab" onclick="showPanel('services')">📋 Services</div>
+        <div class="tab" onclick="showPanel('disks')">💾 Disk</div>
+        <div class="tab" onclick="showPanel('firewall')">🔥 Firewall</div>
+        <div class="tab" onclick="showPanel('docker')">🐳 Docker</div>
+        <div class="tab" onclick="showPanel('system')">⚙️ System</div>
+    </div>
+    <div id="panel-metrics" class="panel active"><div class="grid" id="metrics-grid"></div><div class="grid"><div class="card"><canvas id="cpu-chart"></canvas></div><div class="card"><canvas id="ram-chart"></canvas></div></div></div>
+    <div id="panel-services" class="panel"><div class="card"><div style="display:flex; justify-content:space-between; margin-bottom:15px"><strong>📋 System Services</strong><div><button onclick="loadServices()">Refresh</button><input type="text" id="service-filter" placeholder="Filter..." onkeyup="filterServices()"></div></div><div id="services-list">Loading...</div></div></div>
+    <div id="panel-disks" class="panel"><div class="card"><div id="disks-list">Loading...</div></div></div>
+    <div id="panel-firewall" class="panel"><div class="card"><div style="display:flex; justify-content:space-between; margin-bottom:15px"><strong>🔥 Firewall Rules (INPUT)</strong><div><input type="text" id="new-rule" placeholder="-A INPUT -p tcp --dport 8080 -j ACCEPT" size="35"><button onclick="addRule()">Add</button><button onclick="loadFirewall()">Refresh</button></div></div><div id="firewall-list">Loading...</div></div></div>
+    <div id="panel-docker" class="panel">
+        <div class="card"><div style="display:flex; justify-content:space-between; margin-bottom:15px"><strong>🐳 Docker Containers</strong><button onclick="loadDocker()">Refresh</button></div><div id="docker-list">Loading...</div></div>
+        <div class="card" style="margin-top:20px"><div style="margin-bottom:15px"><strong>🐚 Docker CLI</strong></div><div style="display:flex; gap:10px; flex-wrap:wrap"><input type="text" id="docker-cmd" placeholder="ps -a" style="flex:1"><button onclick="runDockerCommand()">Run</button><button onclick="runDockerCommand('ps -a')">ps -a</button><button onclick="runDockerCommand('images')">images</button><button onclick="runDockerCommand('stats --no-stream')">stats</button></div><div id="docker-output" class="log-viewer" style="margin-top:15px; max-height:200px"></div></div>
+    </div>
+    <div id="panel-system" class="panel"><div class="grid"><div class="card" id="sys-info">Loading...</div></div></div>
+    <div class="ip-box" id="ip-info"></div>
+    <div class="footer">NgasalOS Full Dashboard</div>
+</div>
+<div id="serviceModal" class="modal" onclick="if(event.target===this) closeModal()"><div class="modal-content"><h3 id="modal-title">Detail</h3><div id="modal-body"></div><button onclick="closeModal()">Close</button></div></div>
+<script>
+let cpuChart, ramChart, cpuData = [], ramData = [], allServices = [];
+function showPanel(p){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById(`panel-${p}`).classList.add('active');event.target.classList.add('active');}
+async function loadMetrics(){try{const r=await fetch('/api/metrics'),d=await r.json();document.getElementById('metrics-grid').innerHTML=`<div class="card"><div class="card-title">CPU</div><div class="card-value">${d.cpu}%</div><div class="progress-bar"><div class="progress-fill" style="width:${d.cpu}%"></div></div><small>${d.cpu_freq} GHz</small></div><div class="card"><div class="card-title">RAM</div><div class="card-value">${d.ram.used}MB</div><div class="progress-bar"><div class="progress-fill" style="width:${d.ram.percent}%"></div></div><small>of ${d.ram.total}MB (${d.ram.percent}%)</small></div><div class="card"><div class="card-title">Swap</div><div class="card-value">${d.swap.used}MB</div><div class="progress-bar"><div class="progress-fill" style="width:${d.swap.percent}%"></div></div><small>of ${d.swap.total}MB</small></div><div class="card"><div class="card-title">Uptime</div><div class="card-value">${Math.floor(d.uptime/3600)}h</div><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div><small>${Math.floor(d.uptime/86400)} days</small></div><div class="card"><div class="card-title">Temperature</div><div class="card-value">${d.temperature}°C</div><div class="progress-bar"><div class="progress-fill" style="width:${d.temperature}%"></div></div><small>Normal</small></div><div class="card"><div class="card-title">Load</div><div class="card-value">${d.load[0]}</div><div class="progress-bar"><div class="progress-fill" style="width:${Math.min(d.load[0]*25,100)}%"></div></div><small>1,5,15: ${d.load.join(', ')}</small></div><div class="card"><div class="card-title">Download</div><div class="card-value">${d.network.rx}MB</div></div><div class="card"><div class="card-title">Upload</div><div class="card-value">${d.network.tx}MB</div></div>`;cpuData.push(d.cpu);if(cpuData.length>30)cpuData.shift();ramData.push(d.ram.percent);if(ramData.length>30)ramData.shift();if(cpuChart){cpuChart.update();ramChart.update()}}catch(e){}}
+async function loadServices(){try{const r=await fetch('/api/services');allServices=await r.json();renderServices(allServices)}catch(e){}}
+function renderServices(s){document.getElementById('services-list').innerHTML=s.map(s=>`<div class="service-item"><div><strong>${s.name}</strong><br><small>${s.description||''}</small></div><div><span class="status-${s.status}">● ${s.status}</span><button onclick="viewServiceLogs('${s.name}')">Logs</button><button onclick="controlService('${s.name}','start')">Start</button><button onclick="controlService('${s.name}','stop')">Stop</button><button onclick="controlService('${s.name}','restart')">Restart</button></div></div>`).join('')}
+function filterServices(){renderServices(allServices.filter(s=>s.name.toLowerCase().includes(document.getElementById('service-filter').value.toLowerCase())))}
+async function controlService(n,a){await fetch(`/api/services/${n}/${a}`,{method:'POST'});setTimeout(loadServices,1000)}
+async function viewServiceLogs(n){const r=await fetch(`/api/services/${n}/logs`),d=await r.json();document.getElementById('modal-title').innerHTML=`📋 ${n} Logs`;document.getElementById('modal-body').innerHTML=`<div class="log-viewer">${(d.logs||[]).map(l=>l.replace(/</g,'&lt;')).join('<br>')}</div>`;document.getElementById('serviceModal').style.display='flex'}
+async function loadDisks(){const r=await fetch('/api/disk'),d=await r.json();document.getElementById('disks-list').innerHTML=d.map(d=>`<div class="disk-item"><div><strong>${d.path}</strong><br>${d.total}GB total</div><div>Used: ${d.used}GB (${d.percent}%)</div><div>Free: ${d.free}GB</div><div class="progress-bar" style="width:150px"><div class="progress-fill" style="width:${d.percent}%"></div></div></div>`).join('')}
+async function loadFirewall(){const r=await fetch('/api/firewall/rules'),d=await r.json();document.getElementById('firewall-list').innerHTML=(d.rules||[]).map((r,i)=>`<div class="rule-item"><code style="font-size:11px">${r.substring(0,100)}</code><button onclick="deleteRule('INPUT',${i+1})" class="danger">Delete</button></div>`).join('')}
+async function addRule(){const r=document.getElementById('new-rule').value;if(!r)return;await fetch('/api/firewall/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule:r})});document.getElementById('new-rule').value='';loadFirewall()}
+async function deleteRule(c,n){await fetch(`/api/firewall/rules/${c}/${n}`,{method:'DELETE'});loadFirewall()}
+async function loadDocker(){const r=await fetch('/api/docker/containers'),c=await r.json();if(c.length===0){document.getElementById('docker-list').innerHTML='<div class="service-item">No containers found</div>';return}document.getElementById('docker-list').innerHTML=c.map(c=>`<div class="service-item"><div><strong>${c.name}</strong><br><small>${c.image}|${c.id}</small></div><div><span class="status-${c.state==='running'?'running':'stopped'}">● ${c.status||c.state}</span><button onclick="dockerControl('${c.name}','start')">Start</button><button onclick="dockerControl('${c.name}','stop')">Stop</button><button onclick="dockerControl('${c.name}','restart')">Restart</button><button onclick="dockerLogs('${c.name}')">Logs</button><button onclick="dockerRemove('${c.name}')" class="danger">Delete</button></div></div>`).join('')}
+async function dockerControl(n,a){await fetch(`/api/docker/containers/${n}/${a}`,{method:'POST'});loadDocker()}
+async function dockerRemove(n){if(confirm(`Hapus container ${n}?`))await fetch(`/api/docker/containers/${n}/remove`,{method:'DELETE'});loadDocker()}
+async function dockerLogs(n){const r=await fetch(`/api/docker/containers/${n}/logs`),d=await r.json();document.getElementById('modal-title').innerHTML=`🐳 ${n} Logs`;document.getElementById('modal-body').innerHTML=`<div class="log-viewer">${(d.logs||[]).map(l=>l.replace(/</g,'&lt;')).join('<br>')}</div>`;document.getElementById('serviceModal').style.display='flex'}
+async function runDockerCommand(c){let i=c||document.getElementById('docker-cmd').value;if(!i)return;const r=await fetch('/api/docker/exec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:i})}),d=await r.json();document.getElementById('docker-output').innerHTML='<pre style="margin:0;font-family:monospace;font-size:11px">'+(d.output||'').replace(/</g,'&lt;')+'</pre>'}
+async function loadSystemInfo(){const r=await fetch('/api/system/info'),i=await r.json();document.getElementById('sys-info').innerHTML=`<div class="card-title">System Info</div><div>Hostname: ${i.hostname}</div><div>Kernel: ${i.kernel}</div><div>Arch: ${i.arch}</div><div>OS: ${i.os}</div><div>IP: ${i.ip}</div><div>Users: ${i.users}</div>`;document.getElementById('ip-info').innerHTML=`🌐 ${i.hostname}|${i.ip}|${i.kernel}`}
+async function rebootSystem(){if(confirm('Reboot system?'))await fetch('/api/system/reboot',{method:'POST'})}
+async function shutdownSystem(){if(confirm('Shutdown system?'))await fetch('/api/system/shutdown',{method:'POST'})}
+function closeModal(){document.getElementById('serviceModal').style.display='none'}
+function initCharts(){const c=document.getElementById('cpu-chart').getContext('2d'),r=document.getElementById('ram-chart').getContext('2d');for(let i=0;i<30;i++)cpuData.push(0),ramData.push(0);cpuChart=new Chart(c,{type:'line',data:{labels:Array(30).fill(''),datasets:[{label:'CPU %',data:cpuData,borderColor:'#00e5a0',fill:false}]},options:{responsive:true}});ramChart=new Chart(r,{type:'line',data:{labels:Array(30).fill(''),datasets:[{label:'RAM %',data:ramData,borderColor:'#00b8ff',fill:false}]},options:{responsive:true}})}
+initCharts();loadMetrics();loadServices();loadDisks();loadFirewall();loadDocker();loadSystemInfo();setInterval(loadMetrics,3000);setInterval(loadServices,10000);
+</script>
+</body>
+</html>
