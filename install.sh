@@ -3,15 +3,23 @@ set -e
 
 echo "🚀 Installing NgasalOS Dashboard..."
 
+# Update and install dependencies
 apt update
 apt install -y python3 python3-pip python3-flask python3-psutil iptables curl
-pip install flask-cors --break-system-packages
+pip install flask-cors --break-system-packages 2>/dev/null || true
 
+# Create directories
 mkdir -p /opt/ngasalos/api /opt/ngasalos/web
 
-curl -s https://raw.githubusercontent.com/allstore14/ngasalos-dashboard/main/api/server.py -o /opt/ngasalos/api/server.py
-curl -s https://raw.githubusercontent.com/allstore14/ngasalos-dashboard/main/web/dashboard.html -o /opt/ngasalos/web/dashboard.html
+# Download files
+echo "Downloading server.py..."
+curl -s -o /opt/ngasalos/api/server.py https://raw.githubusercontent.com/allstore14/ngasalos-dashboard/main/api/server.py
 
+echo "Downloading dashboard.html..."
+curl -s -o /opt/ngasalos/web/dashboard.html https://raw.githubusercontent.com/allstore14/ngasalos-dashboard/main/web/dashboard.html
+
+# Create systemd service
+echo "Creating systemd service..."
 cat > /etc/systemd/system/ngasalos-api.service << 'EOL'
 [Unit]
 Description=NgasalOS API Server
@@ -27,11 +35,14 @@ WorkingDirectory=/opt/ngasalos/api
 WantedBy=multi-user.target
 EOL
 
+# Start service
 systemctl daemon-reload
 systemctl enable ngasalos-api
 systemctl start ngasalos-api
 
+# Get IP
 IP=$(hostname -I | awk '{print $1}')
+
 echo ""
 echo "✅ Installation complete!"
 echo "📱 Dashboard: http://$IP:5000"
