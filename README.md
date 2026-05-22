@@ -16,8 +16,8 @@
 | ⚙️ System Control | Reboot and shutdown from browser |
 
 ## 🚀 Quick Install (One Line)
+bash <(curl -s https://raw.githubusercontent.com/allstore14/ngasalos-dashboard/main/install.sh)
 
-`bash <(curl -s https://raw.githubusercontent.com/allstore14/ngasalos-dashboard/main/install.sh)`
 
 ## 📋 Requirements
 
@@ -28,36 +28,31 @@
 
 ## 🔧 Manual Installation
 
-`git clone https://github.com/allstore14/ngasalos-dashboard.git /opt/ngasalos`
-`cd /opt/ngasalos`
-`apt install -y python3 python3-pip python3-flask python3-psutil iptables curl`
-`pip install flask-cors --break-system-packages`
-`systemctl enable ngasalos-api`
-`systemctl start ngasalos-api`
+```bash
+git clone https://github.com/allstore14/ngasalos-dashboard.git /opt/ngasalos
+cd /opt/ngasalos
+apt install -y python3 python3-pip python3-flask python3-psutil iptables curl
+pip install flask-cors --break-system-packages
+systemctl enable ngasalos-api
+systemctl start ngasalos-api
 
-## 🖥️ Access Dashboard
+🖥️ Access Dashboard
+http://YOUR_STB_IP:5000
+Example: http://192.168.1.100:5000
 
-`http://YOUR_STB_IP:5000`
+📁 Project Structure
+/opt/ngasalos/
+├── api/server.py      # Backend API
+├── web/dashboard.html # Frontend UI
+└── install.sh         # Installer
 
-Example: `http://192.168.1.100:5000`
+🛠️ Commands
+systemctl status ngasalos-api   # Check status
+systemctl restart ngasalos-api  # Restart service
+journalctl -u ngasalos-api -f   # View logs
 
-## 📁 Project Structure
-
-`/opt/ngasalos/`
-`├── api/server.py      # Backend API`
-`├── web/dashboard.html # Frontend UI`
-`└── install.sh         # Installer`
-
-## 🛠️ Commands
-
-`systemctl status ngasalos-api   # Check status`
-`systemctl restart ngasalos-api  # Restart service`
-`journalctl -u ngasalos-api -f   # View logs`
-
-## 📝 License
-
+📝 License
 MIT
 
-## 🙏 Credits
-
+🙏 Credits
 For ARM STB community 🇮🇩
